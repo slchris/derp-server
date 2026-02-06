@@ -5,8 +5,8 @@
 # ============================================
 # Note: These defaults are overridden by Makefile/CI which auto-detect
 # the Tailscale version from Headscale's go.mod for compatibility
-# Go 1.24+ is required for the 'tool' directive in newer Tailscale versions
-ARG GO_VERSION=1.24
+# Go version must match the requirement in Tailscale's go.mod
+ARG GO_VERSION=1.25
 ARG TAILSCALE_VERSION=v1.94.1
 
 FROM golang:${GO_VERSION}-alpine AS builder
