@@ -143,6 +143,9 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Disable provenance to avoid attestation push issues
+          provenance: false
+          sbom: false
           build-args: |
             GO_VERSION=${{ env.GO_VERSION }}
             TAILSCALE_VERSION=${{ needs.detect-version.outputs.tailscale_version }}
