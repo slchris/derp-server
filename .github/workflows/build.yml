@@ -19,7 +19,8 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  GO_VERSION: '1.23'
+  # Go 1.24+ is required for the 'tool' directive in newer Tailscale versions
+  GO_VERSION: '1.24'
 
 jobs:
   # First job: Detect the Tailscale version used by Headscale

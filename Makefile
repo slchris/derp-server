@@ -7,7 +7,8 @@
 IMAGE_NAME := derp-server
 REGISTRY := ghcr.io/slchris
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
-GO_VERSION := 1.23
+# Go 1.24+ is required for the 'tool' directive in newer Tailscale versions
+GO_VERSION := 1.24
 PLATFORMS := linux/arm64,linux/amd64
 
 # Auto-detect Tailscale version from Headscale (with fallback)
