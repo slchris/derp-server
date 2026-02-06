@@ -1,2 +1,32 @@
-.idea
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Project specific
 inventory/prod.yaml
+
+# Build outputs
+derper
+*.exe
+
+# Certificates (don't commit secrets!)
+*.pem
+*.key
+*.crt
+*.csr
+certs/
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+.tmp/

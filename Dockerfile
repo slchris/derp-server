@@ -1,38 +1,88 @@
-FROM golang as builder
+# syntax=docker/dockerfile:1
 
-WORKDIR /app 
+# ============================================
+# Stage 1: Build the derper binary
+# ============================================
+# Note: These defaults are overridden by Makefile/CI which auto-detect
+# the Tailscale version from Headscale's go.mod for compatibility
+ARG GO_VERSION=1.23
+ARG TAILSCALE_VERSION=v1.94.1
 
-# Install tailscale derper
-# https://tailscale.com/kb/1118/custom-derp-servers/
+FROM golang:${GO_VERSION}-alpine AS builder
 
-RUN git clone https://github.com/tailscale/tailscale/ && \
-    cd tailscale && \
-    CGO_ENABLED=0 go build -o derper  ./cmd/derper/
+# Install build dependencies
+RUN apk add --no-cache git ca-certificates
 
+WORKDIR /build
 
-FROM busybox
+# Clone specific version for reproducible builds
+ARG TAILSCALE_VERSION
+RUN git clone --depth 1 --branch ${TAILSCALE_VERSION} https://github.com/tailscale/tailscale.git
 
-LABEL maintainer="Tailscale/Headscale Derp server <chris@lesscrowds.org>"
+WORKDIR /build/tailscale
 
-ENV LANG C.UTF-8
-# 
-ENV DERP_DOMAIN example.com
-ENV DERP_CERT_MODE letsencrypt
-ENV DERP_CERT_DIR /app/certs
-ENV DERP_ADDR :443
-ENV DERP_STUN true
-ENV DERP_HTTP_PORT 80
-ENV DERP_VERIFY_CLIENTS false
+# Build with optimizations
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -ldflags="-s -w -X tailscale.com/version.longStamp=${TAILSCALE_VERSION}" \
+    -trimpath \
+    -o /derper \
+    ./cmd/derper/
+
+# ============================================
+# Stage 2: Create minimal runtime image
+# ============================================
+FROM alpine:3.20
+
+LABEL maintainer="Chris <chris@lesscrowds.org>"
+LABEL org.opencontainers.image.title="DERP Server"
+LABEL org.opencontainers.image.description="Tailscale/Headscale DERP relay server"
+LABEL org.opencontainers.image.source="https://github.com/slchris/derp-server"
+LABEL org.opencontainers.image.licenses="BSD-3-Clause"
+
+# Install runtime dependencies
+RUN apk add --no-cache ca-certificates tzdata curl
+
+# Create non-root user for security
+RUN addgroup -g 1000 derper && \
+    adduser -u 1000 -G derper -s /sbin/nologin -D derper
+
+# Environment variables with sensible defaults
+ENV DERP_DOMAIN=example.com \
+    DERP_CERT_MODE=letsencrypt \
+    DERP_CERT_DIR=/app/certs \
+    DERP_ADDR=:443 \
+    DERP_STUN=true \
+    DERP_HTTP_PORT=80 \
+    DERP_VERIFY_CLIENTS=false \
+    DERP_STUN_PORT=3478 \
+    TZ=UTC
 
 WORKDIR /app
 
-COPY --from=builder /app/tailscale/derper .
+# Copy binary from builder
+COPY --from=builder /derper /app/derper
 
+# Create certificate directory
+RUN mkdir -p /app/certs && \
+    chown -R derper:derper /app
 
-CMD /app/derper -hostname=$DERP_DOMAIN \
+# Expose ports
+EXPOSE 443 80 3478/udp
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -sf http://localhost:${DERP_HTTP_PORT}/ || exit 1
+
+# Run as non-root user (commented out - may need root for port 443)
+# USER derper
+
+# Use shell form to allow environment variable expansion
+CMD /app/derper \
+    -hostname=$DERP_DOMAIN \
     -certmode=$DERP_CERT_MODE \
     -certdir=$DERP_CERT_DIR \
     -a=$DERP_ADDR \
-    -stun=$DERP_STUN  \
+    -stun=$DERP_STUN \
+    -stun-port=$DERP_STUN_PORT \
     -http-port=$DERP_HTTP_PORT \
     -verify-clients=$DERP_VERIFY_CLIENTS
