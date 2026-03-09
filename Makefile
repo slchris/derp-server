@@ -9,7 +9,7 @@ REGISTRY := ghcr.io/slchris
 VERSION := $(shell git describe --tags --always --dirty 2>/dev/null || echo "dev")
 # Go version must match the requirement in Tailscale's go.mod
 GO_VERSION := 1.25
-PLATFORMS := linux/arm64,linux/amd64
+PLATFORMS := linux/amd64,linux/arm64,linux/arm/v7
 
 # Auto-detect Tailscale version from Headscale (with fallback)
 HEADSCALE_GO_MOD_URL := https://raw.githubusercontent.com/juanfont/headscale/main/go.mod

@@ -7,7 +7,7 @@ A lightweight Docker image for deploying [Tailscale DERP](https://tailscale.com/
 
 ## Features
 
-- **Multi-architecture support**: `linux/amd64` and `linux/arm64`
+- **Multi-architecture support**: `linux/amd64`, `linux/arm64`, and `linux/arm/v7` (Raspberry Pi, Hetzner ARM VPS, etc.)
 - **Security-focused**: Based on Alpine Linux with minimal attack surface
 - **Health checks**: Built-in health monitoring for orchestration
 - **Small image size**: Optimized multi-stage build

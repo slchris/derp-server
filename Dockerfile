@@ -8,6 +8,8 @@
 # Go version must match the requirement in Tailscale's go.mod
 ARG GO_VERSION=1.25
 ARG TAILSCALE_VERSION=v1.94.1
+# TARGETARCH is automatically set by Docker BuildKit for multi-platform builds
+ARG TARGETARCH
 
 FROM golang:${GO_VERSION}-alpine AS builder
 
@@ -23,7 +25,9 @@ RUN git clone --depth 1 --branch ${TAILSCALE_VERSION} https://github.com/tailsca
 WORKDIR /build/tailscale
 
 # Build with optimizations
-RUN CGO_ENABLED=0 GOOS=linux go build \
+# TARGETARCH is injected by BuildKit (amd64, arm64, arm)
+ARG TARGETARCH
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${TARGETARCH} go build \
     -ldflags="-s -w -X tailscale.com/version.longStamp=${TAILSCALE_VERSION}" \
     -trimpath \
     -o /derper \
@@ -77,13 +81,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
 # Run as non-root user (commented out - may need root for port 443)
 # USER derper
 
-# Use shell form to allow environment variable expansion
-CMD /app/derper \
-    -hostname=$DERP_DOMAIN \
-    -certmode=$DERP_CERT_MODE \
-    -certdir=$DERP_CERT_DIR \
-    -a=$DERP_ADDR \
-    -stun=$DERP_STUN \
-    -stun-port=$DERP_STUN_PORT \
-    -http-port=$DERP_HTTP_PORT \
-    -verify-clients=$DERP_VERIFY_CLIENTS
+# Copy entrypoint script
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Use JSON form with entrypoint for proper signal handling
+ENTRYPOINT ["/app/entrypoint.sh"]
